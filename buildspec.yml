@@ -25,3 +25,5 @@ artifacts:
     - scripts/before-install.sh
     - scripts/npm-install.sh
     - scripts/npm-start.sh
+    - package.json
+    - package-lock.json
