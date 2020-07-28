@@ -13,20 +13,20 @@ app.get("/test", function (request, response) {
     })
 });
 
-(async function() {
+(async function () {
 
     const config = await require('./config');
-    
+
     app.get('/numVoteTest', async function (req, res) {
-    
+
         var contract = new web3js.eth.Contract(config.lunchContractABI, config.contractAddressLunch);
-    
+
         var returnValue = await contract.methods.numVotes().call({ from: config.contractAddressLunch });
-    
+
         var gasPrice = await web3js.eth.getGasPrice(function (e, r) { console.log('Error: ', e) });
-    
+
         var latestBlock = await web3js.eth.getBlock("latest");
-    
+
         var rawTransaction = {
             "from": config.masterAddress,
             "gasPrice": gasPrice,
@@ -37,18 +37,18 @@ app.get("/test", function (request, response) {
         }
         res.send({ rawTransaction });
     })
-    
+
     app.get('/numVote', async function (req, res) {
-    
+
         //creating contract object
         var contract = new web3js.eth.Contract(config.lunchExtendedContractABI, config.contractAddressLunchExtended);
-    
+
         var returnValue = await contract.methods.numVotes().call({ from: config.contractAddressLunchExtended });
-    
+
         var gasPrice = await web3js.eth.getGasPrice(function (e, r) { console.log('Error: ', e) });
-    
+
         var latestBlock = await web3js.eth.getBlock("latest");
-    
+
         var rawTransaction = {
             "from": config.masterAddress,
             "gasPrice": gasPrice,
@@ -59,7 +59,7 @@ app.get("/test", function (request, response) {
         }
         res.send({ rawTransaction });
     });
-    
+
     app.listen(3000, () => console.log('Example app listening on port 3000!'))
 
 })();
