@@ -7,15 +7,15 @@ const app = express();
 //Infura HttpProvider Endpoint
 web3js = new web3(new web3.providers.HttpProvider("https://ropsten.infura.io/v3/674c8c3bc3c64cc6bd6ce5849f05219c"));
 
-(async function() {
-    
-    const config = await require('./config');
+app.get("/test", function (request, response) {
+    response.send({
+        test: 150
+    })
+});
 
-    app.get("/test", function (request, response) {
-        response.send({
-            test: 150
-        })
-    });
+(async function() {
+
+    const config = await require('./config');
     
     app.get('/numVoteTest', async function (req, res) {
     
