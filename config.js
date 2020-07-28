@@ -1,4 +1,5 @@
-const dotenv = require('dotenv').config({ path: 'process.env' });
+// const dotenv = require('dotenv').config({ path: 'process.env' });
+const retrieveSecret = require('./secret');
 
 var config = {};
 
@@ -483,8 +484,24 @@ config.lunchExtendedContractABI = [
     }
 ];
 
-config.masterAddress = process.env.MASTERADDRESS;
-config.contractAddressLunch = process.env.LUNCHCONTRACTADDRESS;
-config.contractAddressLunchExtended = process.env.LUNCHEXTENDEDCONTRACTADDRESS;
+// config.masterAddress = process.env.MASTERADDRESS;
+// config.contractAddressLunch = process.env.LUNCHCONTRACTADDRESS;
+// config.contractAddressLunchExtended = process.env.LUNCHEXTENDEDCONTRACTADDRESS;
+
+async function environmentConfig() {
+    secrets.getSecret('/bap/prod/masteraddress').then((masterAddress) => {
+        config.masterAddress = await masterAddress;
+    });
+    
+    secrets.getSecret('/bap/prod/smartcontractaddress1').then((smartAddress1) => {
+        config.contractAddressLunch = await smartAddress1;
+    });
+    
+    secrets.getSecret('/bap/prod/smartcontractaddress1').then((smartAddress1) => {
+        config.contractAddressLunch = await smartAddress1;
+    });
+}
+
+environmentConfig();
 
 module.exports = config;
