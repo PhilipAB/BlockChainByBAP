@@ -21,3 +21,4 @@ artifacts:
     - aws-client.js
     - secret.js
     - node_modules/**/*
+    - appspec.yml
