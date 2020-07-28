@@ -1,4 +1,4 @@
 #!/bin/bash
-cd /home/ec2-user/bap
-git pull origin master
+cd /home/ec2-user/BlockChainByBAP
+git pull origin develop
 npm install
