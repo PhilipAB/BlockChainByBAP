@@ -1,4 +1,3 @@
-// const dotenv = require('dotenv').config({ path: 'process.env' });
 const retrieveSecret = require('./secret');
 
 var config = {};
@@ -483,10 +482,6 @@ config.lunchExtendedContractABI = [
         "type": "function"
     }
 ];
-
-// config.masterAddress = process.env.MASTERADDRESS;
-// config.contractAddressLunch = process.env.LUNCHCONTRACTADDRESS;
-// config.contractAddressLunchExtended = process.env.LUNCHEXTENDEDCONTRACTADDRESS;
 
 module.exports = (async function () {
     config.masterAddress = await retrieveSecret('/bap/prod/masteraddress').then((masterAddress) => {
