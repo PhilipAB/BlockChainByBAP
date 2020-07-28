@@ -488,20 +488,17 @@ config.lunchExtendedContractABI = [
 // config.contractAddressLunch = process.env.LUNCHCONTRACTADDRESS;
 // config.contractAddressLunchExtended = process.env.LUNCHEXTENDEDCONTRACTADDRESS;
 
-async function environmentConfig() {
+module.exports = (async function() {
     secrets.getSecret('/bap/prod/masteraddress').then((masterAddress) => {
         config.masterAddress = await masterAddress;
     });
-    
+
     secrets.getSecret('/bap/prod/smartcontractaddress1').then((smartAddress1) => {
         config.contractAddressLunch = await smartAddress1;
     });
-    
+
     secrets.getSecret('/bap/prod/smartcontractaddress1').then((smartAddress1) => {
         config.contractAddressLunch = await smartAddress1;
     });
-}
-
-environmentConfig();
-
-module.exports = config;
+    return config;
+})();
