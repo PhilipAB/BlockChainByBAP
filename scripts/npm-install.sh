@@ -1,4 +1,4 @@
 #!/bin/bash
 cd /home/ec2-user/BlockChainByBAP
 git pull origin develop
-sudo npm install
+sudo -H -u ec2-user bash -c 'npm install'
