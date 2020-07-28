@@ -491,14 +491,20 @@ config.lunchExtendedContractABI = [
 module.exports = (async function () {
     config.masterAddress = await retrieveSecret('/bap/prod/masteraddress').then((masterAddress) => {
         return masterAddress;
+    }).catch(err => {
+        console.log(err);
     });
 
     config.contractAddressLunch = await retrieveSecret('/bap/prod/smartcontractaddress1').then((smartAddress1) => {
         return smartAddress1;
+    }).catch(err => {
+        console.log(err);
     });
 
     config.contractAddressLunchExtended = await retrieveSecret('/bap/prod/smartcontractaddress1').then((smartAddress1) => {
         return smartAddress1;
+    }).catch(err => {
+        console.log(err);
     });
     return config;
 })();
