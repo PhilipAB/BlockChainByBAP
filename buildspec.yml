@@ -22,3 +22,6 @@ artifacts:
     - secret.js
     - node_modules/**/*
     - appspec.yml
+    - scripts/before-install.sh
+    - scripts/npm-install.sh
+    - scripts/npm-start.sh
