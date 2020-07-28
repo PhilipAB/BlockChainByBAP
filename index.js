@@ -7,9 +7,18 @@ const app = express();
 //Infura HttpProvider Endpoint
 web3js = new web3(new web3.providers.HttpProvider("https://ropsten.infura.io/v3/674c8c3bc3c64cc6bd6ce5849f05219c"));
 
+const qualityLevel = ['very low', 'low', 'acceptable', 'good', 'very good'];
+
 app.get("/test", function (request, response) {
     response.send({
         test: 150
+    })
+});
+
+app.get("/sensorQuality", function (request, response) {
+    var sensorProcessing = qualityLevel[Math.floor(Math.random() * qualityLevel.length)];
+    response.send({
+        foodQuality: sensorProcessing
     })
 });
 
