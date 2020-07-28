@@ -6,10 +6,10 @@ phases:
       - echo Installing source NPM dependencies...
       - npm install
   build:
-    commands:
-      - echo Build started on `date`
-      - echo Compiling the dist folder
-      - npm run-script build
+    commands: # no build specification needed
+      # - echo Build started on `date`
+      # - echo Compiling the dist folder
+      # - npm run-script build
   post_build:
     commands:
       - echo Build completed on `date`
