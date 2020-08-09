@@ -4,15 +4,13 @@ const Tx = require('ethereumjs-tx').Transaction;
 const axios = require('axios');
 const { response } = require('express');
 const bodyParser = require('body-parser');
+const signedTransaction = require('./signed-transactions');
 
 const app = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-//Infura HttpProvider Endpoint
-//web3js.currentProvider.disconnect();
-web3js = new web3(new web3.providers.WebsocketProvider("wss://ropsten.infura.io/ws/v3/674c8c3bc3c64cc6bd6ce5849f05219c"));
 // 1 = very low, 2 = low, 3 = acceptable, 4 = good, 5 = very good
 const qualityLevel = [1, 2, 3, 4, 5];
 
@@ -22,37 +20,29 @@ app.get("/test", function (request, response) {
     })
 });
 
-app.get("/sensorQuality", function (request, response) {
-    var sensorProcessing = qualityLevel[Math.floor(Math.random() * qualityLevel.length)];
-    response.send({
-        foodQuality: sensorProcessing
-    })
-});
-
 (async function () {
 
     const config = await require('./config');
 
+    //Infura HttpProvider Endpoint
+    web3js = new web3(new web3.providers.WebsocketProvider("wss://ropsten.infura.io/ws/v3/" + config.projectId));
+
+    //Check if the name for a location is valid
     app.get('/validName/:name', async function (req, res) {
 
         var contract = new web3js.eth.Contract(config.contract2ABI, config.contractAddress2);
 
         var returnValue = await contract.methods.validName(req.params.name).call({ from: config.contractAddress2 });
 
-        // var gasPrice = await web3js.eth.getGasPrice(function (e, r) { console.log('Error: ', e) });
-
-        // var latestBlock = await web3js.eth.getBlock("latest");
-
         var rawTransaction = {
             "from": config.masterAddress,
-            // "gasPrice": gasPrice,
-            // "gasLimit": latestBlock.gasLimit,
             "to": config.contractAddress2,
             "return value": returnValue
         }
         res.send({ rawTransaction });
     });
 
+    //Add a new location onchain 
     app.post('/addLocation', async function (req, res) {
         if (!req.body.name) {
             return res.status(400).send({
@@ -68,26 +58,7 @@ app.get("/sensorQuality", function (request, response) {
             name: req.body.name
         }
 
-        var myAddress = config.masterAddress;
-        var privateKey = Buffer.from(config.privateKey, 'hex')
-
-        var count;
-        // get transaction count, later will used as nonce
-        web3js.eth.getTransactionCount(myAddress).then(function (v) {
-            console.log("Count: " + v);
-            count = v;
-            var amount = web3js.utils.toHex(1e16);
-            //creating raw tranaction
-            var rawTransaction = { "from": myAddress, "gasPrice": web3js.utils.toHex(20 * 1e9), "gasLimit": web3js.utils.toHex(210000), "to": config.contractAddress2, "value": "0x0", "data": contract.methods.addLocation(req.body.name).encodeABI(), "nonce": web3js.utils.toHex(count) }
-            console.log(rawTransaction);
-            //creating tranaction via ethereumjs-tx on ropsten test network
-            var transaction = new Tx(rawTransaction, { 'chain': 'ropsten' });
-            //signing transaction with private key
-            transaction.sign(privateKey);
-            //sending transacton via web3js module
-            web3js.eth.sendSignedTransaction('0x' + transaction.serialize().toString('hex'))
-                .on('transactionHash', console.log);
-        })
+        signedTransaction(config.masterAddress, config.privateKey, config.contractAddress2, contract.methods.addLocation(req.body.name).encodeABI(), 0);
 
         return res.status(201).send({
             success: 'true',
@@ -96,26 +67,22 @@ app.get("/sensorQuality", function (request, response) {
         })
     });
 
+    //Verify a specific location
     app.get('/validLocation/:location', async function (req, res) {
 
         var contract = new web3js.eth.Contract(config.contract2ABI, config.contractAddress2);
 
         var returnValue = await contract.methods.validLocation(req.params.location).call({ from: config.contractAddress2 });
 
-        // var gasPrice = await web3js.eth.getGasPrice(function (e, r) { console.log('Error: ', e) });
-
-        // var latestBlock = await web3js.eth.getBlock("latest");
-
         var rawTransaction = {
             "from": config.masterAddress,
-            // "gasPrice": gasPrice,
-            // "gasLimit": latestBlock.gasLimit,
             "to": config.contractAddress2,
             "return value": returnValue
         }
         res.send({ rawTransaction });
     });
 
+    //Map a location to a specific address
     app.post('/mapLocationToAddress', async function (req, res) {
         if (!req.body.address) {
             return res.status(400).send({
@@ -138,26 +105,7 @@ app.get("/sensorQuality", function (request, response) {
             mappingSuccessful: returnValue
         }
 
-        var myAddress = config.masterAddress;
-        var privateKey = Buffer.from(config.privateKey, 'hex')
-
-        var count;
-        // get transaction count, later will used as nonce
-        web3js.eth.getTransactionCount(myAddress).then(function (v) {
-            console.log("Count: " + v);
-            count = v;
-            var amount = web3js.utils.toHex(1e16);
-            //creating raw tranaction
-            var rawTransaction = { "from": myAddress, "gasPrice": web3js.utils.toHex(20 * 1e9), "gasLimit": web3js.utils.toHex(210000), "to": config.contractAddress2, "value": "0x0", "data": contract.methods.mapLocationToAddress(req.body.address, req.body.location).encodeABI(), "nonce": web3js.utils.toHex(count) }
-            console.log(rawTransaction);
-            //creating tranaction via ethereumjs-tx on ropsten test network
-            var transaction = new Tx(rawTransaction, { 'chain': 'ropsten' });
-            //signing transaction with private key
-            transaction.sign(privateKey);
-            //sending transacton via web3js module
-            web3js.eth.sendSignedTransaction('0x' + transaction.serialize().toString('hex'))
-                .on('transactionHash', console.log);
-        })
+        signedTransaction(config.masterAddress, config.privateKey, config.contractAddress2, contract.methods.mapLocationToAddress(req.body.address, req.body.location).encodeABI(), 0);
 
         return res.status(201).send({
             success: 'true',
@@ -166,6 +114,7 @@ app.get("/sensorQuality", function (request, response) {
         })
     });
 
+    //Create a new batch onchain
     app.post('/createBatches', async function (req, res) {
         if (!req.body.commodity) {
             return res.status(400).send({
@@ -202,26 +151,7 @@ app.get("/sensorQuality", function (request, response) {
             batchIdAndActualQuantity: returnValue
         }
 
-        var myAddress = config.masterAddress;
-        var privateKey = Buffer.from(config.privateKey, 'hex')
-
-        var count;
-        // get transaction count, later will used as nonce
-        web3js.eth.getTransactionCount(myAddress).then(function (v) {
-            console.log("Count: " + v);
-            count = v;
-            var amount = web3js.utils.toHex(1e16);
-            //creating raw tranaction
-            var rawTransaction = { "from": myAddress, "gasPrice": web3js.utils.toHex(20 * 1e9), "gasLimit": web3js.utils.toHex(210000), "to": config.contractAddress2, "value": "0x0", "data": contract.methods.createBatches(req.body.commodity, req.body.origin, req.body.owner, req.body.quantity).encodeABI(), "nonce": web3js.utils.toHex(count) }
-            console.log(rawTransaction);
-            //creating tranaction via ethereumjs-tx on ropsten test network
-            var transaction = new Tx(rawTransaction, { 'chain': 'ropsten' });
-            //signing transaction with private key
-            transaction.sign(privateKey);
-            //sending transacton via web3js module
-            web3js.eth.sendSignedTransaction('0x' + transaction.serialize().toString('hex'))
-                .on('transactionHash', console.log);
-        })
+        signedTransaction(config.masterAddress, config.privateKey, config.contractAddress2, contract.methods.createBatches(req.body.commodity, req.body.origin, req.body.owner, req.body.quantity).encodeABI(), 0);
 
         return res.status(201).send({
             success: 'true',
@@ -230,26 +160,24 @@ app.get("/sensorQuality", function (request, response) {
         })
     });
 
+    //Verify a specific batch
     app.get('/validBatch/:batch', async function (req, res) {
 
         var contract = new web3js.eth.Contract(config.contract2ABI, config.contractAddress2);
 
         var returnValue = await contract.methods.validBatch(req.params.batch).call({ from: config.contractAddress2 });
 
-        // var gasPrice = await web3js.eth.getGasPrice(function (e, r) { console.log('Error: ', e) });
-
-        // var latestBlock = await web3js.eth.getBlock("latest");
-
         var rawTransaction = {
             "from": config.masterAddress,
-            // "gasPrice": gasPrice,
-            // "gasLimit": latestBlock.gasLimit,
             "to": config.contractAddress2,
             "return value": returnValue
         }
         res.send({ rawTransaction });
     });
 
+    //transfer a batch between to owners
+    //make sure that the old owner actually owns the batch and that the new owner has sufficient funds
+    //otherwise this method returns false
     app.post('/transferBatch', async function (req, res) {
         if (!req.body.selectedBatch) {
             return res.status(400).send({
@@ -286,26 +214,7 @@ app.get("/sensorQuality", function (request, response) {
             transferSuccessful: returnValue
         }
 
-        var myAddress = config.masterAddress;
-        var privateKey = Buffer.from(config.privateKey, 'hex')
-
-        var count;
-        // get transaction count, later will used as nonce
-        web3js.eth.getTransactionCount(myAddress).then(function (v) {
-            console.log("Count: " + v);
-            count = v;
-            var amount = web3js.utils.toHex(1e16);
-            //creating raw tranaction
-            var rawTransaction = { "from": myAddress, "gasPrice": web3js.utils.toHex(20 * 1e9), "gasLimit": web3js.utils.toHex(210000), "to": config.contractAddress2, "value": "0x0", "data": contract.methods.transferBatch(req.body.selectedBatch, req.body.oldOwner, req.body.newOwner, req.body.price).encodeABI(), "nonce": web3js.utils.toHex(count) }
-            console.log(rawTransaction);
-            //creating tranaction via ethereumjs-tx on ropsten test network
-            var transaction = new Tx(rawTransaction, { 'chain': 'ropsten' });
-            //signing transaction with private key
-            transaction.sign(privateKey);
-            //sending transacton via web3js module
-            web3js.eth.sendSignedTransaction('0x' + transaction.serialize().toString('hex'))
-                .on('transactionHash', console.log);
-        })
+        signedTransaction(config.masterAddress, config.privateKey, config.contractAddress2, contract.methods.transferBatch(req.body.selectedBatch, req.body.oldOwner, req.body.newOwner, req.body.price).encodeABI(), 0);
 
         return res.status(201).send({
             success: 'true',
@@ -314,6 +223,7 @@ app.get("/sensorQuality", function (request, response) {
         })
     });
 
+    //Trigger the sensor to detect the quality of a batch by creating new quality request
     app.post('/createQualityRequest', async function (req, res) {
         if (!req.body.batch) {
             return res.status(400).send({
@@ -328,26 +238,7 @@ app.get("/sensorQuality", function (request, response) {
             batch: req.body.batch
         }
 
-        var myAddress = config.masterAddress;
-        var privateKey = Buffer.from(config.privateKey, 'hex')
-
-        var count;
-        // get transaction count, later will used as nonce
-        web3js.eth.getTransactionCount(myAddress).then(function (v) {
-            console.log("Count: " + v);
-            count = v;
-            var amount = web3js.utils.toHex(1e16);
-            //creating raw tranaction
-            var rawTransaction = { "from": myAddress, "gasPrice": web3js.utils.toHex(20 * 1e9), "gasLimit": web3js.utils.toHex(210000), "to": config.contractAddress2, "value": "0x0", "data": contract.methods.createQualityRequest(req.body.batch).encodeABI(), "nonce": web3js.utils.toHex(count) }
-            console.log(rawTransaction);
-            //creating tranaction via ethereumjs-tx on ropsten test network
-            var transaction = new Tx(rawTransaction, { 'chain': 'ropsten' });
-            //signing transaction with private key
-            transaction.sign(privateKey);
-            //sending transacton via web3js module
-            web3js.eth.sendSignedTransaction('0x' + transaction.serialize().toString('hex'))
-                .on('transactionHash', console.log);
-        })
+        signedTransaction(config.masterAddress, config.privateKey, config.contractAddress2, contract.methods.createQualityRequest(req.body.batch).encodeABI(), 0);
 
         return res.status(201).send({
             success: 'true',
@@ -356,26 +247,24 @@ app.get("/sensorQuality", function (request, response) {
         })
     });
 
+    //get the quality of a batch
+    // 0 = undefined -> no QualityAssessment yet made
+    // 1 = very low, 2 = low, 3 = acceptable, 4 = good, 5 = very good
     app.get('/getQualityOfBatch/:batch', async function (req, res) {
 
         var contract = new web3js.eth.Contract(config.contract2ABI, config.contractAddress2);
 
         var returnValue = await contract.methods.getQualityOfBatch(req.params.batch).call({ from: config.contractAddress2 });
 
-        // var gasPrice = await web3js.eth.getGasPrice(function (e, r) { console.log('Error: ', e) });
-
-        // var latestBlock = await web3js.eth.getBlock("latest");
-
         var rawTransaction = {
             "from": config.masterAddress,
-            // "gasPrice": gasPrice,
-            // "gasLimit": latestBlock.gasLimit,
             "to": config.contractAddress2,
             "return value": returnValue
         }
         res.send({ rawTransaction });
     });
 
+    //Open or reset a bank account for a specific address
     app.post('/openOrResetBankAccount', async function (req, res) {
         if (!req.body.address) {
             return res.status(400).send({
@@ -383,34 +272,14 @@ app.get("/sensorQuality", function (request, response) {
                 message: 'address is required'
             });
         }
-        var contract = new web3js.eth.Contract(config.contract3ABI, config.contractAddress3);
+        var contract = new web3js.eth.Contract(config.contract2ABI, config.contractAddress2);
 
-        var returnValue = await contract.methods.openOrResetBankAccount(req.body.address).call({ from: config.contractAddress3 });
         const bankAccount = {
             address: req.body.address,
             initialBalance: 0
         }
 
-        var myAddress = config.masterAddress;
-        var privateKey = Buffer.from(config.privateKey, 'hex')
-
-        var count;
-        // get transaction count, later will used as nonce
-        web3js.eth.getTransactionCount(myAddress).then(function (v) {
-            console.log("Count: " + v);
-            count = v;
-            var amount = web3js.utils.toHex(1e16);
-            //creating raw tranaction
-            var rawTransaction = { "from": myAddress, "gasPrice": web3js.utils.toHex(20 * 1e9), "gasLimit": web3js.utils.toHex(210000), "to": config.contractAddress3, "value": "0x0", "data": contract.methods.openOrResetBankAccount(req.body.address).encodeABI(), "nonce": web3js.utils.toHex(count) }
-            console.log(rawTransaction);
-            //creating tranaction via ethereumjs-tx on ropsten test network
-            var transaction = new Tx(rawTransaction, { 'chain': 'ropsten' });
-            //signing transaction with private key
-            transaction.sign(privateKey);
-            //sending transacton via web3js module
-            web3js.eth.sendSignedTransaction('0x' + transaction.serialize().toString('hex'))
-                .on('transactionHash', console.log);
-        })
+        signedTransaction(config.masterAddress, config.privateKey, config.contractAddress2, contract.methods.openOrResetBankAccount(req.body.address).encodeABI(), 0);
 
         return res.status(201).send({
             success: 'true',
@@ -419,6 +288,7 @@ app.get("/sensorQuality", function (request, response) {
         })
     });
 
+    //Make a deposit for the bank account of an specific address
     app.post('/makeDeposit', async function (req, res) {
         if (!req.body.address) {
             return res.status(400).send({
@@ -432,34 +302,15 @@ app.get("/sensorQuality", function (request, response) {
                 message: 'deposit is required'
             });
         }
-        var contract = new web3js.eth.Contract(config.contract3ABI, config.contractAddress3);
+        var contract = new web3js.eth.Contract(config.contract2ABI, config.contractAddress2);
 
-        var returnValue = await contract.methods.makeDeposit(req.body.address, req.body.deposit).call({ from: config.contractAddress3 });
+        var returnValue = await contract.methods.makeDeposit(req.body.address, req.body.deposit).call({ from: config.contractAddress2 });
         const bankAccount = {
             address: req.body.address,
             depositIncrease: req.body.deposit
         }
 
-        var myAddress = config.masterAddress;
-        var privateKey = Buffer.from(config.privateKey, 'hex')
-
-        var count;
-        // get transaction count, later will used as nonce
-        web3js.eth.getTransactionCount(myAddress).then(function (v) {
-            console.log("Count: " + v);
-            count = v;
-            var amount = web3js.utils.toHex(1e16);
-            //creating raw tranaction
-            var rawTransaction = { "from": myAddress, "gasPrice": web3js.utils.toHex(20 * 1e9), "gasLimit": web3js.utils.toHex(210000), "to": config.contractAddress3, "value": "0x0", "data": contract.methods.makeDeposit(req.body.address, req.body.deposit).encodeABI(), "nonce": web3js.utils.toHex(count) }
-            console.log(rawTransaction);
-            //creating tranaction via ethereumjs-tx on ropsten test network
-            var transaction = new Tx(rawTransaction, { 'chain': 'ropsten' });
-            //signing transaction with private key
-            transaction.sign(privateKey);
-            //sending transacton via web3js module
-            web3js.eth.sendSignedTransaction('0x' + transaction.serialize().toString('hex'))
-                .on('transactionHash', console.log);
-        })
+        signedTransaction(config.masterAddress, config.privateKey, config.contractAddress2, contract.methods.makeDeposit(req.body.address, req.body.deposit).encodeABI(), 0);
 
         return res.status(201).send({
             success: 'true',
@@ -468,6 +319,7 @@ app.get("/sensorQuality", function (request, response) {
         })
     });
 
+    //Transfer funds between two addresses
     app.post('/transfer', async function (req, res) {
         if (!req.body.addressFrom) {
             return res.status(400).send({
@@ -487,9 +339,9 @@ app.get("/sensorQuality", function (request, response) {
                 message: 'amount is required'
             });
         }
-        var contract = new web3js.eth.Contract(config.contract3ABI, config.contractAddress3);
+        var contract = new web3js.eth.Contract(config.contract2ABI, config.contractAddress2);
 
-        var returnValue = await contract.methods.hasFunds(req.body.addressFrom, req.body.amount).call({ from: config.contractAddress3 });
+        var returnValue = await contract.methods.hasFunds(req.body.addressFrom, req.body.amount).call({ from: config.contractAddress2 });
         const transferOverview = {
             addressFrom: req.body.addressFrom,
             addressTo: req.body.addressTo,
@@ -497,65 +349,45 @@ app.get("/sensorQuality", function (request, response) {
             successful: returnValue
         }
 
-        var myAddress = config.masterAddress;
-        var privateKey = Buffer.from(config.privateKey, 'hex')
-
-        var count;
-        // get transaction count, later will used as nonce
-        web3js.eth.getTransactionCount(myAddress).then(function (v) {
-            console.log("Count: " + v);
-            count = v;
-            var amount = web3js.utils.toHex(1e16);
-            //creating raw tranaction
-            var rawTransaction = { "from": myAddress, "gasPrice": web3js.utils.toHex(20 * 1e9), "gasLimit": web3js.utils.toHex(210000), "to": config.contractAddress3, "value": "0x0", "data": contract.methods.transfer(req.body.addressFrom, req.body.addressTo, req.body.amount).encodeABI(), "nonce": web3js.utils.toHex(count) }
-            console.log(rawTransaction);
-            //creating tranaction via ethereumjs-tx on ropsten test network
-            var transaction = new Tx(rawTransaction, { 'chain': 'ropsten' });
-            //signing transaction with private key
-            transaction.sign(privateKey);
-            //sending transacton via web3js module
-            web3js.eth.sendSignedTransaction('0x' + transaction.serialize().toString('hex'))
-                .on('transactionHash', console.log);
-        })
+        signedTransaction(config.masterAddress, config.privateKey, config.contractAddress2, contract.methods.transfer(req.body.addressFrom, req.body.addressTo, req.body.amount).encodeABI(), 0);
 
         return res.status(201).send({
-            success: 'true',
-            message: 'bank deposit made successfully',
             transferOverview
         })
     });
 
+    //Check if an owner actually owns a specific batch
+    app.get('/checkOwnership/:address/:batch', async function (req, res) {
+
+        var contract = new web3js.eth.Contract(config.contract2ABI, config.contractAddress2);
+
+        var returnValue = await contract.methods.isOwnerOfBatch(req.params.address, req.params.batch).call({ from: config.contractAddress2 });
+
+        var rawTransaction = {
+            "from": config.masterAddress,
+            "to": config.contractAddress2,
+            "isOwner": returnValue
+        }
+        res.send({ rawTransaction });
+    });
+
     var contract2 = new web3js.eth.Contract(config.contract2ABI, config.contractAddress2);
 
+    //A NewRequest event is triggered if a quality request has been made
     contract2.events.NewRequest({
     }, function (error, event) { })
         .on('data', async function (event) {
-            console.log(event);
+            //The sensor determines the quality of the batch
             var sensorProcessing = qualityLevel[Math.floor(Math.random() * qualityLevel.length)];
             var returnValue = await contract2.methods.makeQualityAssessment(event.returnValues.batch, sensorProcessing).call({ from: config.contractAddress2 });
+            
+            //The resulting quality is stored onchain
+            signedTransaction(config.masterAddress, config.privateKey, config.contractAddress2, contract2.methods.makeQualityAssessment(event.returnValues.batch, sensorProcessing).encodeABI(), 1);
 
-            var myAddress = config.masterAddress;
-            var privateKey = Buffer.from(config.privateKey, 'hex')
+            //logging the quality for debugging purposes
+            console.log("Quality: ", returnValue);
 
-            var count;
-            // get transaction count, later will used as nonce
-            web3js.eth.getTransactionCount(myAddress).then(function (v) {
-                console.log("Count: " + v);
-                count = v;
-                var amount = web3js.utils.toHex(1e16);
-                //creating raw tranaction
-                var rawTransaction = { "from": myAddress, "gasPrice": web3js.utils.toHex(20 * 1e9), "gasLimit": web3js.utils.toHex(210000), "to": config.contractAddress2, "value": "0x0", "data": contract2.methods.makeQualityAssessment(event.returnValues.batch, sensorProcessing).encodeABI(), "nonce": web3js.utils.toHex(count) }
-                console.log(rawTransaction);
-                //creating tranaction via ethereumjs-tx on ropsten test network
-                var transaction = new Tx(rawTransaction, { 'chain': 'ropsten' });
-                //signing transaction with private key
-                transaction.sign(privateKey);
-                //sending transacton via web3js module
-                web3js.eth.sendSignedTransaction('0x' + transaction.serialize().toString('hex'))
-                    .on('transactionHash', console.log);
-            })
-
-            console.log(returnValue);
+            //Removing this specific event, so it won't trigger the sensor again
             event.removed = true;
         })
         .on('changed', function (event) {

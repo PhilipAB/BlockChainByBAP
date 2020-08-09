@@ -242,6 +242,11 @@ config.contract2ABI = [
 		"name": "batches",
 		"outputs": [
 			{
+				"internalType": "bool",
+				"name": "initialised",
+				"type": "bool"
+			},
+			{
 				"internalType": "string",
 				"name": "commodity",
 				"type": "string"
@@ -407,6 +412,30 @@ config.contract2ABI = [
 			}
 		],
 		"name": "hasFunds",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "batch",
+				"type": "uint256"
+			}
+		],
+		"name": "isOwnerOfBatch",
 		"outputs": [
 			{
 				"internalType": "bool",
@@ -593,6 +622,11 @@ config.contract2ABI = [
 		],
 		"name": "ownership",
 		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "initialised",
+				"type": "bool"
+			},
 			{
 				"internalType": "string",
 				"name": "commodity",
@@ -1019,6 +1053,12 @@ module.exports = (async function () {
 
     config.contractAddress3 = await retrieveSecret('/bap/prod/smartcontractaddress3').then((smartAddress3) => {
         return smartAddress3;
+    }).catch(err => {
+        console.log(err);
+	});
+	
+	config.projectId = await retrieveSecret('/bap/prod/infuraProjectId').then((infuraProjectId) => {
+        return infuraProjectId;
     }).catch(err => {
         console.log(err);
     });
